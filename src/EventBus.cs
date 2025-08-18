@@ -135,42 +135,44 @@ namespace Sufficit.Events
         /// <returns>A task that completes when all resolved handlers have finished processing the event.</returns>
         private async Task ProcessEventImmediately(Type eventType, object eventData, CancellationToken cancellationToken)
         {
-            using var scope = _serviceProvider.CreateScope();
-            try
+            using (var scope = _serviceProvider.CreateScope())
             {
-                var handlerType = typeof(IEventHandler<>).MakeGenericType(eventType);
-                var handlers = scope.ServiceProvider.GetServices(handlerType);
-
-                var handlerTasks = handlers.Select(async handler =>
+                try
                 {
-                    if (handler == null) return;
+                    var handlerType = typeof(IEventHandler<>).MakeGenericType(eventType);
+                    var handlers = scope.ServiceProvider.GetServices(handlerType);
 
-                    try
+                    var handlerTasks = handlers.Select(async handler =>
                     {
-                        var handleMethod = handlerType.GetMethod("HandleAsync");
-                        if (handleMethod == null) return;
+                        if (handler == null) return;
 
-                        var result = handleMethod.Invoke(handler, new[] { eventData, cancellationToken });
-
-                        if (result is Task task)
+                        try
                         {
-                            await task.ConfigureAwait(false);
+                            var handleMethod = handlerType.GetMethod("HandleAsync");
+                            if (handleMethod == null) return;
+
+                            var result = handleMethod.Invoke(handler, new[] { eventData, cancellationToken });
+
+                            if (result is Task task)
+                            {
+                                await task.ConfigureAwait(false);
+                            }
+
+                            _logger.LogDebug("Handler {HandlerType} processed event {EventType}", handler.GetType().Name, eventType.Name);
                         }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Handler {HandlerType} failed to process event {EventType}", handler?.GetType().Name, eventType.Name);
+                        }
+                    });
 
-                        _logger.LogDebug("Handler {HandlerType} processed event {EventType}", handler.GetType().Name, eventType.Name);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Handler {HandlerType} failed to process event {EventType}", handler?.GetType().Name, eventType.Name);
-                    }
-                });
-
-                var valid = handlerTasks.Where(t => t != null).ToArray();
-                await Task.WhenAll(valid).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to resolve handlers for event {EventType}", eventType.Name);
+                    var valid = handlerTasks.Where(t => t != null).ToArray();
+                    await Task.WhenAll(valid).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to resolve handlers for event {EventType}", eventType.Name);
+                }
             }
         }
 

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -17,7 +18,8 @@ namespace Sufficit.Events
         /// <returns>The same <see cref="IServiceCollection"/> instance to allow chaining.</returns>
         public static IServiceCollection AddEventSystem(this IServiceCollection services, params Assembly[] assemblies)
         {
-            services.AddSingleton<IEventBus, EventBus>();
+            // Register EventBus only if not already registered to keep this method idempotent
+            services.TryAddSingleton<IEventBus, EventBus>();
 
             var scanned = (assemblies != null && assemblies.Length > 0) ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
 
@@ -35,7 +37,10 @@ namespace Sufficit.Events
 
                 foreach (var h in handlers)
                 {
-                    services.AddTransient(h.Service, h.Implementation);
+                    // Use TryAddEnumerable to avoid duplicate handler registrations when this
+                    // method is called multiple times (idempotent registration).
+                    var descriptor = ServiceDescriptor.Transient(h.Service, h.Implementation);
+                    services.TryAddEnumerable(new[] { descriptor });
                 }
             }
 

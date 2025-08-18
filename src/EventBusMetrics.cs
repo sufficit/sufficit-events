@@ -5,8 +5,9 @@ using System.Threading;
 namespace Sufficit.Events
 {
     /// <summary>
-    /// Internal metrics holder that also emits System.Diagnostics.Metrics counters.
-    /// Keeps thread-safe long counters for snapshotting while emitting to a Meter for external collectors.
+    /// Internal metrics holder that also emits <see cref="System.Diagnostics.Metrics"/> counters.
+    /// Keeps thread-safe long counters for snapshotting while emitting to a shared <see cref="Meter"/>
+    /// so external observability systems can collect metrics.
     /// </summary>
     public class EventBusMetrics
     {
@@ -20,22 +21,42 @@ namespace Sufficit.Events
         private static readonly Counter<long> s_processedCounter = s_meter.CreateCounter<long>("sufficit.events.processed", description: "Total events processed");
         private static readonly Counter<long> s_errorCounter = s_meter.CreateCounter<long>("sufficit.events.errors", description: "Total event processing errors");
 
-        public long Published => Interlocked.Read(ref _published);
-        public long Processed => Interlocked.Read(ref _processed);
-        public long Errors => Interlocked.Read(ref _errors);
+    /// <summary>
+    /// Total number of events published to the bus.
+    /// </summary>
+    public long Published => Interlocked.Read(ref _published);
 
+    /// <summary>
+    /// Total number of events that have been processed by handlers.
+    /// </summary>
+    public long Processed => Interlocked.Read(ref _processed);
+
+    /// <summary>
+    /// Total number of processing errors encountered while invoking handlers.
+    /// </summary>
+    public long Errors => Interlocked.Read(ref _errors);
+
+        /// <summary>
+        /// Atomically increments the published counter and emits the value to the published Meter counter.
+        /// </summary>
         internal void IncrementPublished()
         {
             Interlocked.Increment(ref _published);
             s_publishedCounter.Add(1);
         }
 
+        /// <summary>
+        /// Atomically increments the processed counter and emits the value to the processed Meter counter.
+        /// </summary>
         internal void IncrementProcessed()
         {
             Interlocked.Increment(ref _processed);
             s_processedCounter.Add(1);
         }
 
+        /// <summary>
+        /// Atomically increments the error counter and emits the value to the error Meter counter.
+        /// </summary>
         internal void IncrementErrors()
         {
             Interlocked.Increment(ref _errors);

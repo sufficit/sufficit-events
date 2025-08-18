@@ -16,14 +16,17 @@ namespace Sufficit.Events
         /// <param name="services">The service collection to register services into.</param>
         /// <param name="assemblies">Optional assemblies to scan; if none are provided the current AppDomain assemblies are scanned.</param>
         /// <returns>The same <see cref="IServiceCollection"/> instance to allow chaining.</returns>
-        public static IServiceCollection AddEventSystem(this IServiceCollection services, params Assembly[] assemblies)
+        // Core implementation used by public overloads - only processes the provided assemblies
+        // If assemblies is null or empty, it does not scan the AppDomain.
+        public static IServiceCollection AddSufficitEvents(this IServiceCollection services, params Assembly[] assemblies)
         {
             // Register EventBus only if not already registered to keep this method idempotent
             services.TryAddSingleton<IEventBus, EventBus>();
 
-            var scanned = (assemblies != null && assemblies.Length > 0) ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+            if (assemblies == null || assemblies.Length == 0)
+                return services; // no assemblies to scan
 
-            foreach (var assembly in scanned)
+            foreach (var assembly in assemblies)
             {
                 Type[] types;
                 try { types = assembly.GetTypes(); }
@@ -45,6 +48,23 @@ namespace Sufficit.Events
             }
 
             return services;
+        }
+
+        /// <summary>
+        /// Convenience overload: supply an assembly name filter (e.g. 'Sufficit') which will
+        /// be used to select AppDomain assemblies and register handlers from them.
+        /// </summary>
+        public static IServiceCollection AddSufficitEvents(this IServiceCollection services, string assemblyNameFilter = nameof(Sufficit))
+        {
+            var scanned = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a =>
+                {
+                    var name = a.GetName()?.Name;
+                    return !string.IsNullOrEmpty(name) && name.IndexOf(assemblyNameFilter ?? string.Empty, StringComparison.OrdinalIgnoreCase) >= 0;
+                })
+                .ToArray();
+
+            return services.AddSufficitEvents(scanned);
         }
     }
 }

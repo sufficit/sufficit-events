@@ -1,0 +1,10 @@
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.csproj.AssemblyReference.cache
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.GeneratedMSBuildEditorConfig.editorconfig
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.AssemblyInfoInputs.cache
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.AssemblyInfo.cs
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.csproj.CoreCompileInputs.cache
+Z:\Desenvolvimento\sufficit-events\src\bin\Debug\netstandard2.0\Sufficit.Events.deps.json
+Z:\Desenvolvimento\sufficit-events\src\bin\Debug\netstandard2.0\Sufficit.Events.dll
+Z:\Desenvolvimento\sufficit-events\src\bin\Debug\netstandard2.0\Sufficit.Events.pdb
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.dll
+Z:\Desenvolvimento\sufficit-events\src\obj\Debug\netstandard2.0\Sufficit.Events.pdb

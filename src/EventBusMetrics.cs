@@ -21,20 +21,20 @@ namespace Sufficit.Events
         private static readonly Counter<long> s_processedCounter = s_meter.CreateCounter<long>("sufficit.events.processed", description: "Total events processed");
         private static readonly Counter<long> s_errorCounter = s_meter.CreateCounter<long>("sufficit.events.errors", description: "Total event processing errors");
 
-    /// <summary>
-    /// Total number of events published to the bus.
-    /// </summary>
-    public long Published => Interlocked.Read(ref _published);
+        /// <summary>
+        /// Total number of events published to the bus.
+        /// </summary>
+        public long Published => Interlocked.Read(ref _published);
 
-    /// <summary>
-    /// Total number of events that have been processed by handlers.
-    /// </summary>
-    public long Processed => Interlocked.Read(ref _processed);
+        /// <summary>
+        /// Total number of events that have been processed by handlers.
+        /// </summary>
+        public long Processed => Interlocked.Read(ref _processed);
 
-    /// <summary>
-    /// Total number of processing errors encountered while invoking handlers.
-    /// </summary>
-    public long Errors => Interlocked.Read(ref _errors);
+        /// <summary>
+        /// Total number of processing errors encountered while invoking handlers.
+        /// </summary>
+        public long Errors => Interlocked.Read(ref _errors);
 
         /// <summary>
         /// Atomically increments the published counter and emits the value to the published Meter counter.

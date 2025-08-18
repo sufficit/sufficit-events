@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup Label="Sufficit Targeting">
-		<TargetFrameworks>netstandard2.0;net6.0;net7.0;net9.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
 		<RootNamespace>Sufficit.Events</RootNamespace>
 	</PropertyGroup>
 
@@ -23,6 +23,61 @@
 		<Version Condition=" '$(VersionSuffix)' == '' ">0.0.0.0</Version>
 		<Version Condition=" '$(VersionSuffix)' != '' ">$(VersionSuffix)</Version>
 	</PropertyGroup>
+
+  <PropertyGroup Label="Sufficit Product General">
+		<Company>SUFFICIT SOLUÇÕES EM TECNOLOGIA DA INFORMAÇÃO</Company>
+		<Authors>Hugo Castro de Deco</Authors>
+		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+		<ProductName>Sufficit Events</ProductName>
+
+		<!-- Copia todas as dlls de dependencias para o diretório de publicação dos projetos que o utilizam -->
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<PreserveCompilationReferences>false</PreserveCompilationReferences>
+
+		<RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+		<!-- No warning for missing docs -->
+		<NoWarn>$(NoWarn);CS1591</NoWarn> 
+	</PropertyGroup>
+
+<PropertyGroup Label="Sufficit Pacote NUGET">
+		<Name>Sufficit Events</Name>
+		<PackageId>Sufficit.Events</PackageId>
+		<PackageDescription></PackageDescription>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/sufficit/sufficit-events</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/sufficit/sufficit-events</PackageProjectUrl>
+		<PackageIconUrl>https://raw.githubusercontent.com/sufficit/sufficit-events/main/icon.ico</PackageIconUrl>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+		<PackageLicenseFile>license</PackageLicenseFile>
+		<PackageReadmeFile>readme.md</PackageReadmeFile>
+		<PackageIcon>icon.png</PackageIcon>
+	</PropertyGroup>
+
+	<ItemGroup Label="Sufficit Pack Items">
+		<None Include="../icon.png">
+			<Pack>True</Pack>
+			<PackagePath></PackagePath>
+		</None>
+		<None Include="../license">
+			<Pack>True</Pack>
+			<PackagePath></PackagePath>
+		</None>
+		<None Include="../readme.md">
+			<Pack>True</Pack>
+			<PackagePath></PackagePath>
+		</None>
+	</ItemGroup>
+  
+	<ItemGroup Label="Sufficit IA Configurations">
+		<None Include="../.github/copilot-instructions.md">
+			<Pack>False</Pack>
+			<PackagePath></PackagePath>
+		</None>
+	</ItemGroup>
 
   <!-- Only set PkgVersion here if not already set by Directory.Build.props (prevents fallback in csproj from overwriting). -->
   <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0'">

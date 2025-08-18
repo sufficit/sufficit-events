@@ -7,15 +7,15 @@ namespace Sufficit.Events
 {
     public static class EventSystemExtensions
     {
-    /// <summary>
-    /// Registers the <see cref="EventBus"/> as a singleton implementation of <see cref="IEventBus"/>
-    /// and scans the provided assemblies for implementations of <see cref="IEventHandler{TEvent}"/> to
-    /// register them as transient services.
-    /// </summary>
-    /// <param name="services">The service collection to register services into.</param>
-    /// <param name="assemblies">Optional assemblies to scan; if none are provided the current AppDomain assemblies are scanned.</param>
-    /// <returns>The same <see cref="IServiceCollection"/> instance to allow chaining.</returns>
-    public static IServiceCollection AddEventSystem(this IServiceCollection services, params Assembly[] assemblies)
+        /// <summary>
+        /// Registers the <see cref="EventBus"/> as a singleton implementation of <see cref="IEventBus"/>
+        /// and scans the provided assemblies for implementations of <see cref="IEventHandler{TEvent}"/> to
+        /// register them as transient services.
+        /// </summary>
+        /// <param name="services">The service collection to register services into.</param>
+        /// <param name="assemblies">Optional assemblies to scan; if none are provided the current AppDomain assemblies are scanned.</param>
+        /// <returns>The same <see cref="IServiceCollection"/> instance to allow chaining.</returns>
+        public static IServiceCollection AddEventSystem(this IServiceCollection services, params Assembly[] assemblies)
         {
             services.AddSingleton<IEventBus, EventBus>();
 

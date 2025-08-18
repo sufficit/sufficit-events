@@ -11,19 +11,19 @@ namespace Sufficit.Events
 {
     public class EventBus : IEventBus, IDisposable
     {
-    private readonly Channel<(Type EventType, object EventData, CancellationToken CancellationToken)> _eventChannel;
-    private readonly ChannelWriter<(Type, object, CancellationToken)> _writer;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<EventBus> _logger;
-    private readonly Task _processingTask;
-    private readonly CancellationTokenSource _cts;
-    private readonly EventBusMetrics _metrics;
+        private readonly Channel<(Type EventType, object EventData, CancellationToken CancellationToken)> _eventChannel;
+        private readonly ChannelWriter<(Type, object, CancellationToken)> _writer;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<EventBus> _logger;
+        private readonly Task _processingTask;
+        private readonly CancellationTokenSource _cts;
+        private readonly EventBusMetrics _metrics;
 
-    /// <summary>
-    /// Creates a new instance of <see cref="EventBus"/>.
-    /// </summary>
-    /// <param name="serviceProvider">Service provider used to resolve handlers and optional logger.</param>
-    public EventBus(IServiceProvider serviceProvider)
+        /// <summary>
+        /// Creates a new instance of <see cref="EventBus"/>.
+        /// </summary>
+        /// <param name="serviceProvider">Service provider used to resolve handlers and optional logger.</param>
+        public EventBus(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = serviceProvider.GetService<ILogger<EventBus>>() ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<EventBus>.Instance;
@@ -45,15 +45,15 @@ namespace Sufficit.Events
             _logger.LogInformation("EventBus initialized (Channels) with capacity {Capacity}", options.Capacity);
         }
 
-    /// <summary>
-    /// Publishes an event to the bus. The method enqueues the event for background processing. If the provided
-    /// <paramref name="eventData"/> is null the publish is ignored and a warning is logged.
-    /// </summary>
-    /// <typeparam name="TEvent">Type of the event payload.</typeparam>
-    /// <param name="eventData">Event instance to publish.</param>
-    /// <param name="cancellationToken">Token used while writing to the internal channel.</param>
-    /// <returns>A task that completes when the event is queued for processing.</returns>
-    public async Task PublishAsync<TEvent>(TEvent eventData, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Publishes an event to the bus. The method enqueues the event for background processing. If the provided
+        /// <paramref name="eventData"/> is null the publish is ignored and a warning is logged.
+        /// </summary>
+        /// <typeparam name="TEvent">Type of the event payload.</typeparam>
+        /// <param name="eventData">Event instance to publish.</param>
+        /// <param name="cancellationToken">Token used while writing to the internal channel.</param>
+        /// <returns>A task that completes when the event is queued for processing.</returns>
+        public virtual async Task PublishAsync<TEvent>(TEvent eventData, CancellationToken cancellationToken = default)
         {
             if (eventData == null)
             {
@@ -80,12 +80,12 @@ namespace Sufficit.Events
             }
         }
 
-    /// <summary>
-    /// Background loop that reads from the internal channel and dispatches events to handlers.
-    /// This method runs on a dedicated background task started by the constructor.
-    /// </summary>
-    /// <returns>A Task representing the background processing loop.</returns>
-    private async Task ProcessEventsAsync()
+        /// <summary>
+        /// Background loop that reads from the internal channel and dispatches events to handlers.
+        /// This method runs on a dedicated background task started by the constructor.
+        /// </summary>
+        /// <returns>A Task representing the background processing loop.</returns>
+        private async Task ProcessEventsAsync()
         {
             _logger.LogInformation("EventBus background processor started");
 
@@ -124,64 +124,62 @@ namespace Sufficit.Events
             }
         }
 
-    /// <summary>
-    /// Resolves handler implementations for the provided <paramref name="eventType"/> and invokes
-    /// their HandleAsync methods synchronously from the background processing task.
-    /// Reflection is used to call the generic handler method since the event type is only known at runtime.
-    /// </summary>
-    /// <param name="eventType">Runtime type of the event to dispatch.</param>
-    /// <param name="eventData">Event payload instance.</param>
-    /// <param name="cancellationToken">Cancellation token forwarded to the handler invocation.</param>
-    /// <returns>A task that completes when all resolved handlers have finished processing the event.</returns>
-    private async Task ProcessEventImmediately(Type eventType, object eventData, CancellationToken cancellationToken)
+        /// <summary>
+        /// Resolves handler implementations for the provided <paramref name="eventType"/> and invokes
+        /// their HandleAsync methods synchronously from the background processing task.
+        /// Reflection is used to call the generic handler method since the event type is only known at runtime.
+        /// </summary>
+        /// <param name="eventType">Runtime type of the event to dispatch.</param>
+        /// <param name="eventData">Event payload instance.</param>
+        /// <param name="cancellationToken">Cancellation token forwarded to the handler invocation.</param>
+        /// <returns>A task that completes when all resolved handlers have finished processing the event.</returns>
+        private async Task ProcessEventImmediately(Type eventType, object eventData, CancellationToken cancellationToken)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            try
             {
-                try
-                {
-                    var handlerType = typeof(IEventHandler<>).MakeGenericType(eventType);
-                    var handlers = scope.ServiceProvider.GetServices(handlerType);
+                var handlerType = typeof(IEventHandler<>).MakeGenericType(eventType);
+                var handlers = scope.ServiceProvider.GetServices(handlerType);
 
-                    var handlerTasks = handlers.Select(async handler =>
+                var handlerTasks = handlers.Select(async handler =>
+                {
+                    if (handler == null) return;
+
+                    try
                     {
-                        if (handler == null) return;
+                        var handleMethod = handlerType.GetMethod("HandleAsync");
+                        if (handleMethod == null) return;
 
-                        try
+                        var result = handleMethod.Invoke(handler, new[] { eventData, cancellationToken });
+
+                        if (result is Task task)
                         {
-                            var handleMethod = handlerType.GetMethod("HandleAsync");
-                            if (handleMethod == null) return;
-
-                            var result = handleMethod.Invoke(handler, new[] { eventData, cancellationToken });
-
-                            if (result is Task task)
-                            {
-                                await task.ConfigureAwait(false);
-                            }
-
-                            _logger.LogDebug("Handler {HandlerType} processed event {EventType}", handler.GetType().Name, eventType.Name);
+                            await task.ConfigureAwait(false);
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Handler {HandlerType} failed to process event {EventType}", handler?.GetType().Name, eventType.Name);
-                        }
-                    });
 
-                    var valid = handlerTasks.Where(t => t != null).ToArray();
-                    await Task.WhenAll(valid).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to resolve handlers for event {EventType}", eventType.Name);
-                }
+                        _logger.LogDebug("Handler {HandlerType} processed event {EventType}", handler.GetType().Name, eventType.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Handler {HandlerType} failed to process event {EventType}", handler?.GetType().Name, eventType.Name);
+                    }
+                });
+
+                var valid = handlerTasks.Where(t => t != null).ToArray();
+                await Task.WhenAll(valid).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resolve handlers for event {EventType}", eventType.Name);
             }
         }
 
-    /// <summary>
-    /// Returns a snapshot of the internal metrics exposed by the event bus.
-    /// The returned object is a simple DTO suitable for serialization and logging.
-    /// </summary>
-    /// <returns>An <see cref="EventBusStatistics"/> instance containing the latest counters.</returns>
-    public EventBusStatistics GetStatistics()
+        /// <summary>
+        /// Returns a snapshot of the internal metrics exposed by the event bus.
+        /// The returned object is a simple DTO suitable for serialization and logging.
+        /// </summary>
+        /// <returns>An <see cref="EventBusStatistics"/> instance containing the latest counters.</returns>
+        public EventBusStatistics GetStatistics()
         {
             return new EventBusStatistics
             {
@@ -193,11 +191,11 @@ namespace Sufficit.Events
             };
         }
 
-    /// <summary>
-    /// Disposes the event bus, signals the background processor to finish and releases resources.
-    /// The method attempts a graceful shutdown and logs any issues encountered during stop.
-    /// </summary>
-    public void Dispose()
+        /// <summary>
+        /// Disposes the event bus, signals the background processor to finish and releases resources.
+        /// The method attempts a graceful shutdown and logs any issues encountered during stop.
+        /// </summary>
+        public void Dispose()
         {
             _logger.LogInformation("EventBus disposing - Metrics: {@Metrics}", _metrics);
 

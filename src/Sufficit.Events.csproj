@@ -5,17 +5,6 @@
 		<RootNamespace>Sufficit.Events</RootNamespace>
 	</PropertyGroup>
 
-  <!-- Set language version per framework to ensure compatibility with generated global usings -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <LangVersion>7.3</LangVersion>
-    <NoWarn>$(NoWarn);nullable</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-    <LangVersion>10.0</LangVersion>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
 	<PropertyGroup Label="Sufficit Versioning">
 		<VersionSuffix Condition=" '$(Configuration)' != 'Debug' ">1.$([System.DateTime]::UtcNow.ToString(yy)).$([System.DateTime]::UtcNow.ToString(MMdd)).$([System.DateTime]::UtcNow.ToString(HHmm))</VersionSuffix>
 		<AssemblyVersion Condition=" '$(VersionSuffix)' == '' ">0.0.0.0</AssemblyVersion>
@@ -79,29 +68,51 @@
 		</None>
 	</ItemGroup>
 
-  <!-- Only set PkgVersion here if not already set by Directory.Build.props (prevents fallback in csproj from overwriting). -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0'">
-    <PkgVersion>[*,9.0.0)</PkgVersion>
-  </PropertyGroup>
+	<!-- #region Sufficit Versioning Options V:202508221812 -->
 
-  <PropertyGroup Condition=" '$(PkgVersion)' == '' ">
-    <PkgVersion>[*,10.0.0)</PkgVersion>
-  </PropertyGroup>
-  
-  <!-- Use the same package version ranges used by Sufficit.Base to remain compatible and avoid downgrade errors. -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="$(PkgVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="$(PkgVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="$(PkgVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(PkgVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="$(PkgVersion)" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="$(PkgVersion)" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="$(PkgVersion)" />
-  </ItemGroup>
+	<PropertyGroup Label="Sufficit Versioning Options" Condition="'$(TargetFramework)' == 'netstandard2.0'">		
+		<PkgVersion>[9.*,10.0.0)</PkgVersion>
+		<NoWarn>$(NoWarn);nullable</NoWarn>
+		
+		<!-- Set language version per framework to ensure compatibility with generated global usings -->
+		<LangVersion>7.3</LangVersion>
+	</PropertyGroup>
 
-  <!-- Channels package for old TFMs (netstandard2.0) -->
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
-  </ItemGroup>
+	<PropertyGroup Label="Sufficit Versioning Options" Condition=" '$(TargetFramework)' == 'net6.0' ">
+		<PkgVersion>[*,7.0.0)</PkgVersion>
+		<LangVersion>10.0</LangVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Sufficit Versioning Options" Condition=" '$(TargetFramework)' == 'net7.0' ">
+		<PkgVersion>[*,8.0.0)</PkgVersion>
+		<LangVersion>10.0</LangVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Sufficit Versioning Options" Condition=" '$(TargetFramework)' == 'net8.0' ">
+		<PkgVersion>[8.*,10.0.0)</PkgVersion>
+		<LangVersion>10.0</LangVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Sufficit Versioning Options" Condition=" '$(TargetFramework)' == 'net9.0' ">
+		<PkgVersion>[9.*,10.0.0)</PkgVersion>
+		<LangVersion>10.0</LangVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<!-- #endregion -->
+	  
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="$(PkgVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="$(PkgVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="$(PkgVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(PkgVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="$(PkgVersion)" />
+		<PackageReference Include="System.ComponentModel.Annotations" Version="*" />
+		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="$(PkgVersion)" />
+		<PackageReference Include="System.Threading.Channels" Version="$(PkgVersion)" Condition=" '$(TargetFramework)' == 'netstandard2.0' " /><!-- Channels package for old TFMs (netstandard2.0) -->
+	</ItemGroup>
 
 </Project>

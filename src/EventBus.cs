@@ -13,7 +13,7 @@ namespace Sufficit.Events
     {
         private readonly Channel<(Type EventType, object EventData, CancellationToken CancellationToken)> _eventChannel;
         private readonly ChannelWriter<(Type, object, CancellationToken)> _writer;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<EventBus> _logger;
         private readonly Task _processingTask;
         private readonly CancellationTokenSource _cts;
@@ -22,17 +22,18 @@ namespace Sufficit.Events
         /// <summary>
         /// Creates a new instance of <see cref="EventBus"/>.
         /// </summary>
-        /// <param name="serviceProvider">Service provider used to resolve handlers and optional logger.</param>
-        public EventBus(IServiceProvider serviceProvider)
+        /// <param name="serviceScopeFactory">Factory for creating service scopes.</param>
+        /// <param name="logger">Logger instance for logging events.</param>
+        public EventBus(IServiceScopeFactory serviceScopeFactory, ILogger<EventBus> logger)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _logger = serviceProvider.GetService<ILogger<EventBus>>() ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<EventBus>.Instance;
+            _serviceScopeFactory = serviceScopeFactory;
+            _logger = logger;
             _cts = new CancellationTokenSource();
             _metrics = new EventBusMetrics();
 
-            var options = new BoundedChannelOptions(1000)
+            var options = new BoundedChannelOptions(50000) // Increased from 1000 to 50000 to prevent blocking
             {
-                FullMode = BoundedChannelFullMode.Wait,
+                FullMode = BoundedChannelFullMode.DropOldest, // DROP events when full instead of waiting
                 SingleReader = true,
                 SingleWriter = false,
                 AllowSynchronousContinuations = false
@@ -42,23 +43,24 @@ namespace Sufficit.Events
             _writer = _eventChannel.Writer;
 
             _processingTask = Task.Run(ProcessEventsAsync, CancellationToken.None);
-            _logger.LogInformation("EventBus initialized (Channels) with capacity {Capacity}", options.Capacity);
+            _logger.LogInformation("EventBus initialized with capacity {Capacity} events - drops oldest when full", options.Capacity);
         }
 
         /// <summary>
         /// Publishes an event to the bus. The method enqueues the event for background processing. If the provided
         /// <paramref name="eventData"/> is null the publish is ignored and a warning is logged.
+        /// The method is resilient and does not throw exceptions - failures are returned as exceptions.
         /// </summary>
         /// <typeparam name="TEvent">Type of the event payload.</typeparam>
         /// <param name="eventData">Event instance to publish.</param>
         /// <param name="cancellationToken">Token used while writing to the internal channel.</param>
-        /// <returns>A task that completes when the event is queued for processing.</returns>
-        public virtual async Task PublishAsync<TEvent>(TEvent eventData, CancellationToken cancellationToken = default)
+        /// <returns>A task that completes with null on success, or the exception that occurred on failure.</returns>
+        public virtual async Task<Exception?> PublishAsync<TEvent>(TEvent eventData, CancellationToken cancellationToken = default)
         {
             if (eventData == null)
             {
                 _logger.LogWarning("Attempted to publish null event of type {EventType}", typeof(TEvent).Name);
-                return;
+                return new ArgumentNullException(nameof(eventData), "Event data cannot be null");
             }
 
             _metrics.IncrementPublished();
@@ -67,16 +69,13 @@ namespace Sufficit.Events
             {
                 await _writer.WriteAsync((typeof(TEvent), eventData, cancellationToken), cancellationToken);
                 _logger.LogDebug("Event {EventType} queued", typeof(TEvent).Name);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogDebug("Event publishing cancelled for {EventType}", typeof(TEvent).Name);
+                return null; // Success
             }
             catch (Exception ex)
             {
                 _metrics.IncrementErrors();
                 _logger.LogError(ex, "Failed to publish event {EventType}", typeof(TEvent).Name);
-                throw;
+                return ex; // Return the actual exception for caller to handle
             }
         }
 
@@ -135,7 +134,7 @@ namespace Sufficit.Events
         /// <returns>A task that completes when all resolved handlers have finished processing the event.</returns>
         private async Task ProcessEventImmediately(Type eventType, object eventData, CancellationToken cancellationToken)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using (var scope = _serviceScopeFactory.CreateScope())
             {
                 try
                 {

@@ -9,6 +9,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Sufficit.Events
 {
+    /// <summary>
+    /// In-process event bus implementation using channels for high-performance event processing.
+    /// 
+    /// Design Notes:
+    /// - Exception handling: Each handler is responsible for managing its own exceptions. 
+    ///   The EventBus only logs handler failures but does not implement retry policies or 
+    ///   complex error recovery mechanisms. Handlers should implement their own resilience patterns.
+    /// - Performance: Uses bounded channels with DropOldest policy to prevent memory issues
+    /// - Concurrency: Single reader/multiple writers pattern for optimal throughput
+    /// - Graceful shutdown: Attempts clean disposal with timeout
+    /// </summary>
     public class EventBus : IEventBus, IDisposable
     {
         private readonly Channel<(Type EventType, object EventData, CancellationToken CancellationToken)> _eventChannel;
@@ -33,7 +44,7 @@ namespace Sufficit.Events
 
             var options = new BoundedChannelOptions(50000) // Increased from 1000 to 50000 to prevent blocking
             {
-                FullMode = BoundedChannelFullMode.DropOldest, // DROP events when full instead of waiting
+                FullMode = BoundedChannelFullMode.DropWrite, // DROP events when full instead of waiting
                 SingleReader = true,
                 SingleWriter = false,
                 AllowSynchronousContinuations = false
@@ -43,7 +54,7 @@ namespace Sufficit.Events
             _writer = _eventChannel.Writer;
 
             _processingTask = Task.Run(ProcessEventsAsync, CancellationToken.None);
-            _logger.LogInformation("EventBus initialized with capacity {Capacity} events - drops oldest when full", options.Capacity);
+            _logger.LogInformation("EventBus initialized with capacity {Capacity} events - drops write when full", options.Capacity);
         }
 
         /// <summary>

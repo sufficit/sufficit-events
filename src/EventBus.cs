@@ -168,7 +168,8 @@ namespace Sufficit.Events
                                 await task.ConfigureAwait(false);
                             }
 
-                            _logger.LogDebug("Handler {HandlerType} processed event {EventType}", handler.GetType().Name, eventType.Name);
+                            _logger.LogDebug("Handler {HandlerType} processed event {EventType} - Queue remaining: {QueueCount}", 
+                                handler.GetType().Name, eventType.Name, _eventChannel.Reader.Count);
                         }
                         catch (Exception ex)
                         {

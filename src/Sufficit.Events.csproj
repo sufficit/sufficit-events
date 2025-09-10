@@ -118,7 +118,6 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(PkgVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="$(PkgVersion)" />
 		<PackageReference Include="System.ComponentModel.Annotations" Version="*" /> <!-- Supports all versions -->
-		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="$(PkgVersionUntil8)" />
 		<PackageReference Include="System.Threading.Channels" Version="$(PkgVersionUntil8)" />
 	</ItemGroup>
 

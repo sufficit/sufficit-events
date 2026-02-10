@@ -66,5 +66,11 @@ namespace Sufficit.Events
 
             return services.AddSufficitEvents(scanned);
         }
+
+        /// <summary>
+        ///     Convenience overload: registers handlers from the current executing assembly.
+        /// </summary>
+        public static IServiceCollection AddSufficitEvents(this IServiceCollection services)
+            => services.AddSufficitEvents(Assembly.GetExecutingAssembly());
     }
 }

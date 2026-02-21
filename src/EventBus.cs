@@ -70,7 +70,7 @@ namespace Sufficit.Events
         {
             if (eventData == null)
             {
-                _logger.LogWarning("Attempted to publish null event of type {EventType}", typeof(TEvent).Name);
+                _logger.LogWarning("Attempted to publish null event of type {EventType}", SafeTypeName(typeof(TEvent)));
                 return new ArgumentNullException(nameof(eventData), "Event data cannot be null");
             }
 
@@ -79,13 +79,13 @@ namespace Sufficit.Events
             try
             {
                 await _writer.WriteAsync((typeof(TEvent), eventData, cancellationToken), cancellationToken);
-                _logger.LogDebug("Event {EventType} queued", typeof(TEvent).Name);
+                _logger.LogDebug("Event {EventType} queued", SafeTypeName(typeof(TEvent)));
                 return null; // Success
             }
             catch (Exception ex)
             {
                 _metrics.IncrementErrors();
-                _logger.LogError(ex, "Failed to publish event {EventType}", typeof(TEvent).Name);
+                _logger.LogError(ex, "Failed to publish event {EventType}", SafeTypeName(typeof(TEvent)));
                 return ex; // Return the actual exception for caller to handle
             }
         }
@@ -107,6 +107,7 @@ namespace Sufficit.Events
                     while (reader.TryRead(out var item))
                     {
                         var (eventType, eventData, cancellationToken) = item;
+                        var eventTypeName = SafeTypeName(eventType);
 
                         if (cancellationToken.IsCancellationRequested)
                             continue;
@@ -119,7 +120,7 @@ namespace Sufficit.Events
                         catch (Exception ex)
                         {
                             _metrics.IncrementErrors();
-                            _logger.LogError(ex, "Error processing event {EventType}", eventType.Name);
+                            _logger.LogError(ex, "Error processing event {EventType}", eventTypeName);
                         }
                     }
                 }
@@ -149,6 +150,7 @@ namespace Sufficit.Events
             {
                 try
                 {
+                    var eventTypeName = SafeTypeName(eventType);
                     var handlerType = typeof(IEventHandler<>).MakeGenericType(eventType);
                     var handlers = scope.ServiceProvider.GetServices(handlerType);
 
@@ -168,12 +170,13 @@ namespace Sufficit.Events
                                 await task.ConfigureAwait(false);
                             }
 
+                            var handlerRuntimeType = handler?.GetType();
                             _logger.LogDebug("Handler {HandlerType} processed event {EventType} - Queue remaining: {QueueCount}", 
-                                handler.GetType().Name, eventType.Name, _eventChannel.Reader.Count);
+                                SafeTypeName(handlerRuntimeType), eventTypeName, _eventChannel.Reader.Count);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Handler {HandlerType} failed to process event {EventType}", handler?.GetType().Name, eventType.Name);
+                            _logger.LogError(ex, "Handler {HandlerType} failed to process event {EventType}", SafeTypeName(handler?.GetType()), eventTypeName);
                         }
                     });
 
@@ -182,8 +185,23 @@ namespace Sufficit.Events
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to resolve handlers for event {EventType}", eventType.Name);
+                    _logger.LogError(ex, "Failed to resolve handlers for event {EventType}", SafeTypeName(eventType));
                 }
+            }
+        }
+
+        private static string SafeTypeName(Type? type)
+        {
+            if (type == null)
+                return "<null>";
+
+            try
+            {
+                return type.FullName ?? type.Name ?? "<unknown>";
+            }
+            catch
+            {
+                return "<type-name-unavailable>";
             }
         }
 

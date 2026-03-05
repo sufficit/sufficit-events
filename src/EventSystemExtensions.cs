@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
@@ -26,6 +28,16 @@ namespace Sufficit.Events
             if (assemblies == null || assemblies.Length == 0)
                 return services; // no assemblies to scan
 
+            // Build a temporary provider to obtain ILoggerFactory. Logging is configured before
+            // this call in the standard Generic Host startup order, so it is available here.
+#pragma warning disable ASP0000
+            var logger = services.BuildServiceProvider()
+                .GetService<ILoggerFactory>()
+                ?.CreateLogger(nameof(EventSystemExtensions));
+#pragma warning restore ASP0000
+
+            var registered = new List<Type>();
+
             foreach (var assembly in assemblies)
             {
                 Type[] types;
@@ -44,8 +56,15 @@ namespace Sufficit.Events
                     // method is called multiple times (idempotent registration).
                     var descriptor = ServiceDescriptor.Transient(h.Service, h.Implementation);
                     services.TryAddEnumerable(new[] { descriptor });
+                    registered.Add(h.Implementation);
+
+                    logger?.LogDebug("EventSystem: registered handler {Handler} for {Event}",
+                        h.Implementation.FullName, h.Service.GetGenericArguments()[0].Name);
                 }
             }
+
+            logger?.LogInformation("EventSystem: {Count} handler(s) registered from {AssemblyCount} assembly(ies)",
+                registered.Count, assemblies.Length);
 
             return services;
         }

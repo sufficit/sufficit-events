@@ -151,16 +151,36 @@ namespace Sufficit.Events
                 try
                 {
                     var eventTypeName = SafeTypeName(eventType);
-                    var handlerType = typeof(IEventHandler<>).MakeGenericType(eventType);
-                    var handlers = scope.ServiceProvider.GetServices(handlerType);
 
-                    var handlerTasks = handlers.Select(async handler =>
+                    // Collect handlers for the concrete type AND all base types, deduplicating by instance.
+                    // This allows a handler registered for a base event (e.g. ExampleEvent) to receive
+                    // events published with a derived type (e.g. ExampleStartedEvent).
+                    var seen = new System.Collections.Generic.HashSet<object>();
+                    var allHandlers = new System.Collections.Generic.List<(object Handler, Type HandlerType)>();
+
+                    var cursor = eventType;
+                    while (cursor != null && cursor != typeof(object))
                     {
+                        var handlerType = typeof(IEventHandler<>).MakeGenericType(cursor);
+                        foreach (var h in scope.ServiceProvider.GetServices(handlerType))
+                        {
+                            if (h != null && seen.Add(h))
+                                allHandlers.Add((h, handlerType));
+                        }
+                        cursor = cursor.BaseType;
+                    }
+
+                    var handlers = allHandlers.Select(x => x.Handler);
+
+                    var handlerTasks = allHandlers.Select(async entry =>
+                    {
+                        var handler = entry.Handler;
+                        var resolvedHandlerType = entry.HandlerType;
                         if (handler == null) return;
 
                         try
                         {
-                            var handleMethod = handlerType.GetMethod("HandleAsync");
+                            var handleMethod = resolvedHandlerType.GetMethod("HandleAsync");
                             if (handleMethod == null) return;
 
                             var result = handleMethod.Invoke(handler, new[] { eventData, cancellationToken });

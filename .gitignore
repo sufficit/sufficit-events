@@ -1,6 +1,7 @@
-/src/bin/ 
-/src/obj/ 
 **/bin/ 
-**/obj/ 
+**/obj/
+**/tmp/
 .vs/ 
-*.user 
+*.user
+**/.artifacts/
+**/artifacts/
